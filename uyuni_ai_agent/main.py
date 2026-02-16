@@ -78,25 +78,30 @@ def run(dry_run=False):
                 print("[DEBUG] Step 3: running ReAct agent...")  #LOGS REM
                 try:
                     analysis = investigate(anomaly, metrics)
-                    print(f"Analysis:\n{analysis}\n")
+                    print(f"Analysis: [{analysis.urgency}] {analysis.root_cause}")
                 except Exception as e:
                     print("[ERROR] ReAct agent failed: %s" % e)  #LOGS REM
                     traceback.print_exc()  #LOGS REM
-                    analysis = f"Agent error: {e}"
+                    analysis = None
+
+                if analysis is None:
+                    continue
 
                 # Step 4: ACTION
                 if dry_run:
                     print(f"[DRY RUN] Would send alert: {anomaly.description}")
-                    print(f"[DRY RUN] Analysis: {analysis}")
+                    print(f"[DRY RUN] Root cause: {analysis.root_cause}")
+                    print(f"[DRY RUN] Urgency: {analysis.urgency}")
+                    print(f"[DRY RUN] Remediation: {analysis.remediation}")
                 else:
                     print("[DEBUG] Step 4: sending to AlertManager...")  #LOGS REM
-                    summary = f"{anomaly.metric_name} issue on {anomaly.minion_id}"
                     result = send_to_alertmanager(
-                        summary=summary,
-                        description=analysis,
+                        analysis=analysis,
                         severity=anomaly.severity.value,
                         minion_id=anomaly.minion_id,
                         metric_name=anomaly.metric_name,
+                        current_value=anomaly.current_value,
+                        threshold=anomaly.threshold,
                     )
                     print(f"AlertManager: {result}")
 
