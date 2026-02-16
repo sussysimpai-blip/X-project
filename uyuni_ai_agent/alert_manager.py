@@ -4,11 +4,19 @@ import datetime
 from uyuni_ai_agent.config import load_config
 from uyuni_ai_agent.schemas import AnalysisResult
 
+_VALID_URGENCY = {"low", "medium", "high", "critical"}
+
+
+def _clamp_urgency(raw):
+    """Normalize urgency to a fixed label set. Defaults to 'medium'."""
+    val = raw.strip().lower() if raw else "medium"
+    return val if val in _VALID_URGENCY else "medium"
+
 
 # Ref: https://prometheus.io/docs/alerting/latest/alerts_api/
 # Ref: https://prometheus.io/docs/alerting/latest/notification_examples/
 def send_to_alertmanager(
-    analysis,
+    analysis: AnalysisResult,
     severity="info",
     minion_id="",
     metric_name="",
@@ -44,7 +52,7 @@ def send_to_alertmanager(
         "labels": {
             "alertname": "AIAgentResponse",
             "severity": severity,
-            "urgency": analysis.urgency,
+            "urgency": _clamp_urgency(analysis.urgency),
             "source": "ai-bot",
             "minion": minion_id,
             "metric": metric_name,

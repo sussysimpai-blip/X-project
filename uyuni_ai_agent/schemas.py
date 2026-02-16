@@ -1,6 +1,5 @@
-from dataclasses import dataclass
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import List, Literal
+from pydantic import BaseModel, Field, field_validator
 
 
 class AnalysisResult(BaseModel):
@@ -22,10 +21,19 @@ class AnalysisResult(BaseModel):
         description="Ordered remediation steps, e.g. "
         "['Kill the stress-ng process: kill -9 289151', 'Check crontab for scheduled tests']"
     )
-    urgency: str = Field(
+    urgency: Literal["low", "medium", "high", "critical"] = Field(
         description="Urgency rating: one of 'low', 'medium', 'high', 'critical'"
     )
     description: str = Field(
         description="Full human-readable analysis suitable for a Slack alert, "
         "written in markdown. Include all the context an on-call engineer needs."
     )
+
+    @field_validator("urgency", mode="before")
+    @classmethod
+    def normalize_urgency(cls, value: str) -> str:
+        """Normalize urgency values and clamp unknowns to a safe default."""
+        normalized = str(value).strip().lower()
+        if normalized in {"low", "medium", "high", "critical"}:
+            return normalized
+        return "medium"

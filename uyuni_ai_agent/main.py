@@ -8,6 +8,7 @@ from uyuni_ai_agent.prometheus_client import get_all_metrics
 from uyuni_ai_agent.anomaly_detector import check_all_metrics
 from uyuni_ai_agent.react_agent import investigate
 from uyuni_ai_agent.alert_manager import send_to_alertmanager
+from uyuni_ai_agent.schemas import AnalysisResult
 
 
 print("[DEBUG] main.py module loaded")  #LOGS REM
@@ -82,10 +83,29 @@ def run(dry_run=False):
                 except Exception as e:
                     print("[ERROR] ReAct agent failed: %s" % e)  #LOGS REM
                     traceback.print_exc()  #LOGS REM
-                    analysis = None
-
-                if analysis is None:
-                    continue
+                    fallback_root_cause = (
+                        f"ReAct agent failed while investigating anomaly "
+                        f"'{anomaly.description}': {e}"
+                    )
+                    fallback_urgency = "unknown"
+                    fallback_remediation = (
+                        "Automatic root cause analysis failed. "
+                        "Inspect the minion and logs manually."
+                    )
+                    analysis = AnalysisResult(
+                        root_cause=fallback_root_cause,
+                        evidence=[f"ReAct investigation error: {e}"],
+                        remediation=[fallback_remediation],
+                        urgency=fallback_urgency,
+                        description=(
+                            f"{fallback_root_cause}\n\n"
+                            f"Recommended action: {fallback_remediation}"
+                        ),
+                    )
+                    print(
+                        f"[WARN] Using fallback analysis for alerting "
+                        f"[{analysis.urgency}]"
+                    )
 
                 # Step 4: ACTION
                 if dry_run:
